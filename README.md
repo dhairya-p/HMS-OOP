@@ -224,7 +224,4 @@ public class MedicineRepository implements Repository<Medicine, String> {
 ## 4. Factory Pattern
 - Used in DataImportManager for creating different types of entities
 
-## 5. Observer Pattern (Implicit)
-- Used in appointment status updates and inventory management
-
 These patterns and principles together create a maintainable, extensible system where components are loosely coupled but highly cohesive, making the system robust and easier to modify or extend.
