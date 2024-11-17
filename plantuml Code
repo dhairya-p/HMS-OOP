@@ -1,0 +1,605 @@
+@startuml HMS
+
+' Style and skinparams
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor<<Entity>> LightBlue
+    BackgroundColor<<Service>> LightGreen
+    BackgroundColor<<Controller>> LightYellow
+    BackgroundColor<<Repository>> LightGray
+    BackgroundColor<<Boundary>> LightPink
+}
+
+' Enums Package
+package "enums" <<Entity>> {
+    enum AppointmentStatus {
+        PENDING_APPROVAL
+        CONFIRMED
+        CANCELLED
+        COMPLETED
+    }
+
+    enum PrescriptionStatus {
+        PENDING
+        DISPENSED
+        CANCELLED
+    }
+
+    enum ReplenishmentStatus {
+        PENDING
+        APPROVED
+        REJECTED
+        FULFILLED
+    }
+
+    enum BloodType {
+        A_POSITIVE
+        A_NEGATIVE
+        B_POSITIVE
+        B_NEGATIVE
+        O_POSITIVE
+        O_NEGATIVE
+        AB_POSITIVE
+        AB_NEGATIVE
+    }
+
+    enum Gender {
+        MALE
+        FEMALE
+        OTHER
+    }
+
+    enum UserRole {
+        PATIENT
+        DOCTOR
+        PHARMACIST
+        ADMINISTRATOR
+    }
+
+    enum InventoryActionType {
+        ADDITION
+        REDUCTION
+        REPLENISHMENT
+    }
+}
+
+' Entity Package
+package "entity" <<Entity>> {
+    abstract class User {
+        - hospitalId: String
+        - password: String
+        - name: String
+        + getHospitalId(): String
+        + getName(): String
+        + validatePassword(String): boolean
+        + changePassword(String, String): boolean
+        # {abstract} getUserRole(): UserRole
+    }
+
+    class Patient {
+        - medicalRecord: MedicalRecord
+        - appointments: List<Appointment>
+        + getMedicalRecord(): MedicalRecord
+        + setMedicalRecord(MedicalRecord): void
+        + getAppointments(): List<Appointment>
+        + addAppointment(Appointment): void
+        # getUserRole(): UserRole
+    }
+
+    class Doctor {
+        - specialization: String
+        - patients: List<Patient>
+        - availabilities: Map<LocalDate, DoctorAvailability>
+        + getSpecialization(): String
+        + getPatients(): List<Patient>
+        + addPatient(Patient): void
+        + getAvailability(LocalDate): DoctorAvailability
+        + setAvailability(DoctorAvailability): void
+        + getAvailabilities(): Map<LocalDate, DoctorAvailability>
+        # getUserRole(): UserRole
+    }
+
+    class Pharmacist {
+        - dispensedMedications: List<Medicine>
+        - replenishmentRequests: List<ReplenishmentRequest>
+        + dispenseMedication(Prescription): boolean
+        + createReplenishmentRequest(Medicine, int): ReplenishmentRequest
+        + getDispensedMedications(): List<Medicine>
+        + getReplenishmentRequests(): List<ReplenishmentRequest>
+        + getPendingReplenishmentRequests(): List<ReplenishmentRequest>
+        # getUserRole(): UserRole
+    }
+
+    class Administrator {
+        - managedStaff: Set<User>
+        - processedRequests: List<ReplenishmentRequest>
+        - inventoryActions: List<MedicineInventoryAction>
+        + processReplenishmentRequest(ReplenishmentRequest, boolean): boolean
+        + addInventoryAction(MedicineInventoryAction): void
+        + getManagedStaff(): Set<User>
+        + getProcessedRequests(): List<ReplenishmentRequest>
+        + getInventoryActions(): List<MedicineInventoryAction>
+        # getUserRole(): UserRole
+    }
+
+    class MedicalRecord {
+        - patientId: String
+        - dateOfBirth: LocalDate
+        - gender: Gender
+        - bloodType: BloodType
+        - contactInfo: ContactInfo
+        - diagnosisHistory: List<Diagnosis>
+        + getPatientId(): String
+        + getDateOfBirth(): LocalDate
+        + getGender(): Gender
+        + getBloodType(): BloodType
+        + getContactInfo(): ContactInfo
+        + getDiagnosisHistory(): List<Diagnosis>
+        + addDiagnosis(Diagnosis): void
+    }
+
+    class Appointment {
+        - appointmentId: String
+        - patient: Patient
+        - doctor: Doctor
+        - dateTime: LocalDateTime
+        - status: AppointmentStatus
+        - outcomeRecord: AppointmentOutcomeRecord
+        + getAppointmentId(): String
+        + getPatient(): Patient
+        + getDoctor(): Doctor
+        + getDateTime(): LocalDateTime
+        + setDateTime(LocalDateTime): void
+        + getStatus(): AppointmentStatus
+        + setStatus(AppointmentStatus): void
+        + getOutcomeRecord(): AppointmentOutcomeRecord
+        + setOutcomeRecord(AppointmentOutcomeRecord): void
+        + hasValidOutcomeRecord(): boolean
+    }
+
+    class AppointmentSlot {
+        - slotId: String
+        - startTime: LocalTime
+        - endTime: LocalTime
+        - date: LocalDate
+        - available: boolean
+        - appointment: Appointment
+        + getSlotId(): String
+        + getStartTime(): LocalTime
+        + getEndTime(): LocalTime
+        + getDate(): LocalDate
+        + isAvailable(): boolean
+        + setAvailable(boolean): void
+        + getAppointment(): Appointment
+        + tryBook(Appointment): boolean
+        + release(): void
+    }
+
+    class DoctorAvailability {
+        - id: String
+        - doctor: Doctor
+        - date: LocalDate
+        - startTime: LocalTime
+        - endTime: LocalTime
+        + getId(): String
+        + getDoctor(): Doctor
+        + getDate(): LocalDate
+        + getStartTime(): LocalTime
+        + getEndTime(): LocalTime
+    }
+
+    class AppointmentOutcomeRecord {
+        - appointmentDate: LocalDate
+        - serviceType: String
+        - prescriptions: List<Prescription>
+        - consultationNotes: String
+        + getAppointmentDate(): LocalDate
+        + getServiceType(): String
+        + getPrescriptions(): List<Prescription>
+        + getConsultationNotes(): String
+    }
+
+    class Prescription {
+        - medicine: Medicine
+        - quantity: int
+        - status: PrescriptionStatus
+        - dispensedBy: Pharmacist
+        - dispensedDateTime: LocalDateTime
+        + getMedicine(): Medicine
+        + getQuantity(): int
+        + getStatus(): PrescriptionStatus
+        + setStatus(PrescriptionStatus): void
+        + getDispensedBy(): Pharmacist
+        + setDispensedBy(Pharmacist): void
+        + getDispensedDateTime(): LocalDateTime
+        + setDispensedDateTime(LocalDateTime): void
+    }
+
+    class Medicine {
+        - name: String
+        - currentStock: int
+        - lowStockAlert: int
+        - maxStock: int
+        - replenishmentRequested: boolean
+        + getName(): String
+        + getCurrentStock(): int
+        + getLowStockAlert(): int
+        + getMaxStock(): int
+        + isReplenishmentRequested(): boolean
+        + setLowStockAlert(int): void
+        + updateStock(int): boolean
+        + isLowStock(): boolean
+        + requestReplenishment(): boolean
+        + fulfillReplenishment(int): boolean
+        + cancelReplenishmentRequest(): boolean
+        + canFulfillQuantity(int): boolean
+    }
+
+    class MedicineInventoryAction {
+        - medicine: Medicine
+        - quantity: int
+        - actionType: InventoryActionType
+        - actionDateTime: LocalDateTime
+        - performedBy: Administrator
+        - reason: String
+        + getMedicine(): Medicine
+        + getQuantity(): int
+        + getActionType(): InventoryActionType
+        + getActionDateTime(): LocalDateTime
+        + getPerformedBy(): Administrator
+        + getReason(): String
+    }
+
+    class ReplenishmentRequest {
+        - medicine: Medicine
+        - requestedQuantity: int
+        - requestedBy: Pharmacist
+        - requestDateTime: LocalDateTime
+        - processedBy: Administrator
+        - processedDateTime: LocalDateTime
+        - status: ReplenishmentStatus
+        + getMedicine(): Medicine
+        + getRequestedQuantity(): int
+        + getRequestedBy(): Pharmacist
+        + getRequestDateTime(): LocalDateTime
+        + getProcessedBy(): Administrator
+        + getProcessedDateTime(): LocalDateTime
+        + getStatus(): ReplenishmentStatus
+        + setStatus(ReplenishmentStatus): void
+        + setProcessedBy(Administrator): void
+        + setProcessedDateTime(LocalDateTime): void
+    }
+}
+
+' Repository Package
+package "repository" <<Repository>> {
+    interface Repository<T, ID> {
+        + save(T): T
+        + findById(ID): Optional<T>
+        + findAll(): List<T>
+        + delete(ID): void
+        + exists(ID): boolean
+        + clearAll(): void
+    }
+
+    class MedicineRepository implements Repository {
+        - {static} instance: MedicineRepository
+        - medicines: Map<String, Medicine>
+        + {static} getInstance(): MedicineRepository
+        + findByName(String): Optional<Medicine>
+        + findLowStock(): List<Medicine>
+    }
+
+    class PatientRepository implements Repository {
+        - {static} instance: PatientRepository
+        - patients: Map<String, Patient>
+        + {static} getInstance(): PatientRepository
+        + findByName(String): List<Patient>
+    }
+
+    class StaffRepository implements Repository {
+        - {static} instance: StaffRepository
+        - staff: Map<String, User>
+        + {static} getInstance(): StaffRepository
+        + findByRole(UserRole): List<User>
+        + findDoctors(): List<Doctor>
+        + findPharmacists(): List<Pharmacist>
+    }
+
+    class AppointmentRepository implements Repository {
+        - {static} instance: AppointmentRepository
+        - appointments: Map<String, Appointment>
+        + {static} getInstance(): AppointmentRepository
+        + findByPatient(Patient): List<Appointment>
+        + findByDoctor(Doctor): List<Appointment>
+        + findByDate(LocalDate): List<Appointment>
+        + findByStatus(AppointmentStatus): List<Appointment>
+    }
+
+    class MedicalRecordRepository implements Repository {
+        - {static} instance: MedicalRecordRepository
+        - records: Map<String, MedicalRecord>
+        + {static} getInstance(): MedicalRecordRepository
+        + findByBloodType(BloodType): List<MedicalRecord>
+    }
+
+    class DoctorAvailabilityRepository implements Repository {
+        - {static} instance: DoctorAvailabilityRepository
+        - availabilities: Map<String, DoctorAvailability>
+        + {static} getInstance(): DoctorAvailabilityRepository
+        + findByDoctor(Doctor): List<DoctorAvailability>
+        + findByDate(LocalDate): List<DoctorAvailability>
+    }
+}
+
+' Service Interfaces Package
+package "controller.interfaces" <<Service>> {
+    interface AuthenticationService {
+        + login(String, String): Optional<User>
+        + changePassword(User, String, String): boolean
+        + validateCredentials(String, String): boolean
+    }
+
+    interface AppointmentService {
+        + getAvailableSlots(LocalDate, Doctor): List<AppointmentSlot>
+        + scheduleAppointment(Patient, Doctor, AppointmentSlot): Appointment
+        + rescheduleAppointment(String, AppointmentSlot): boolean
+        + cancelAppointment(String): boolean
+        + getScheduledAppointments(Patient): List<Appointment>
+        + getUpcomingAppointments(Doctor): List<Appointment>
+        + getPendingAppointments(Doctor): List<Appointment>
+        + updateAppointmentStatus(String, AppointmentStatus): boolean
+        + recordAppointmentOutcome(String, String, List<Prescription>, String): void
+        + getAllAppointments(): List<Appointment>
+        + getAppointmentById(String): Optional<Appointment>
+        + getAppointmentsByDate(LocalDate): List<Appointment>
+        + getAppointmentsByStatus(AppointmentStatus): List<Appointment>
+    }
+
+    interface DoctorAvailabilityService {
+        + setAvailability(Doctor, LocalDate, LocalTime, LocalTime): void
+        + generateSlots(DoctorAvailability): List<AppointmentSlot>
+        + getSlotByDateTime(Doctor, LocalDate, LocalTime): AppointmentSlot
+    }
+
+    interface MedicalRecordService {
+        + getMedicalRecord(String): MedicalRecord
+        + updateContactInfo(String, String, String): void
+        + addDiagnosis(String, String, String): void
+        + getDiagnosisHistory(String): List<Diagnosis>
+    }
+
+    interface PatientService {
+        + registerPatient(String, String, String): Patient
+        + updatePatientInfo(String, String, String): void
+        + getPatientAppointments(String): List<Appointment>
+    }
+}
+
+' Controller Package
+package "controller" <<Controller>> {
+    class AuthenticationController implements AuthenticationService {
+        - userRepository: UserRepository
+        + login(String, String): Optional<User>
+        + changePassword(User, String, String): boolean
+        + validateCredentials(String, String): boolean
+    }
+
+    class AppointmentController implements AppointmentService {
+        - availabilityService: DoctorAvailabilityService
+        - appointmentRepository: AppointmentRepository
+        + {All methods from AppointmentService}
+        - isValidStatusTransition(AppointmentStatus, AppointmentStatus): boolean
+    }
+
+    class DoctorAvailabilityController implements DoctorAvailabilityService {
+        - availabilityRepository: DoctorAvailabilityRepository
+        + {All methods from DoctorAvailabilityService}
+    }
+
+    class MedicalRecordController implements MedicalRecordService {
+        - medicalRecordRepository: MedicalRecordRepository
+        - patientRepository: PatientRepository
+        + {All methods from MedicalRecordService}
+        + addMedicalRecord(String, MedicalRecord): void
+        + getAllMedicalRecords(): List<MedicalRecord>
+        + hasMedicalRecord(String): boolean
+        + getMedicalRecordsByBloodType(BloodType): List<MedicalRecord>
+        + searchMedicalRecordsByDiagnosis(String): List<MedicalRecord>
+        + removeMedicalRecord(String): boolean
+    }
+
+    class PatientController implements PatientService {
+        - patientRepository: PatientRepository
+        - appointmentController: AppointmentController
+        + {All methods from PatientService}
+    }
+
+    class SessionController {
+        - {static} instance: SessionController
+        - currentUser: User
+        - patientRepository: PatientRepository
+        - staffRepository: StaffRepository
+        - appointmentRepository: AppointmentRepository
+        - medicineRepository: MedicineRepository
+        + {static} getInstance(): SessionController
+        + setCurrentUser(User): void
+        + clearCurrentUser(): void
+        + login(String, String): boolean
+        + logout(): void
+        + getCurrentUser(): User
+        + isLoggedIn(): boolean
+        + getCurrentUserRole(): UserRole
+        + isUserAuthorized(UserRole): boolean
+        + validateSession(): boolean
+        + refreshCurrentUser(): void
+    }
+}
+
+' Boundary Package
+package "boundary" <<Boundary>> {
+    class LoginUI {
+        - scanner: Scanner
+        - authController: AuthenticationController
+        + show(): User
+    }
+
+    class PatientUI {
+        - scanner: Scanner
+        - authController: AuthenticationController
+        - appointmentController: AppointmentController
+        - medicalRecordController: MedicalRecordController
+        - patientController: PatientController
+        + show(Patient): void
+    }
+
+    class DoctorUI {
+        - scanner: Scanner
+        - authController: AuthenticationController
+        - appointmentController: AppointmentController
+        - medicalRecordController: MedicalRecordController
+        - availabilityController: DoctorAvailabilityController
+        + show(Doctor): void
+        - displayMenu(): void
+        - changePassword(Doctor): void
+        - viewPatientMedicalRecords(Doctor): void
+        - updatePatientMedicalRecords(Doctor): void
+        - viewPersonalSchedule(Doctor): void
+        - setAvailability(Doctor): void
+        - handleAppointmentRequests(Doctor): void
+        - viewUpcomingAppointments(Doctor): void
+        - recordAppointmentOutcome(Doctor): void
+    }
+
+    class PharmacistUI {
+        - scanner: Scanner
+        - authController: AuthenticationController
+        - appointmentController: AppointmentController
+        - medicineRepository: MedicineRepository
+        + show(Pharmacist): void
+        - displayMenu(): void
+        - changePassword(Pharmacist): void
+        - viewAppointmentOutcomes(): void
+        - updatePrescriptionStatus(): void
+        - viewMedicationInventory(): void
+        - submitReplenishmentRequest(Pharmacist): void
+        - dispenseMedication(Prescription): boolean
+    }
+
+    class AdministratorUI {
+        - scanner: Scanner
+        - authController: AuthenticationController
+        - appointmentController: AppointmentController
+        - medicineRepository: MedicineRepository
+        + show(Administrator): void
+        - displayMenu(): void
+        - changePassword(Administrator): void
+        - viewSystemStatistics(): void
+        - manageReplenishmentRequests(): void
+        - manageMedicineInventory(): void
+        - viewStaffList(): void
+        - generateReports(): void
+    }
+}
+
+' System Package
+package "system" <<Controller>> {
+    class HospitalManagementSystem {
+        - scanner: Scanner
+        - loginUI: LoginUI
+        - patientUI: PatientUI
+        - doctorUI: DoctorUI
+        - pharmacistUI: PharmacistUI
+        - administratorUI: AdministratorUI
+        - dataImportManager: DataImportManager
+        - authController: AuthenticationController
+        + start(): void
+        - loadInitialData(): void
+    }
+
+    class DataImportManager {
+        - authController: AuthenticationController
+        + importAllData(String, String, String): void
+        - importMedicineData(String): void
+        - importPatientData(String): void
+        - importStaffData(String): void
+    }
+}
+
+' Relationships and Dependencies
+
+' User hierarchy
+User <|-- Patient
+User <|-- Doctor
+User <|-- Pharmacist
+User <|-- Administrator
+
+' Entity relationships
+Patient "1" *-- "1" MedicalRecord
+Patient "1" -- "*" Appointment
+MedicalRecord "1" *-- "*" Diagnosis
+Diagnosis "1" *-- "1" Treatment
+
+Doctor "1" -- "*" Patient
+Doctor "1" -- "*" DoctorAvailability
+Doctor "1" -- "*" AppointmentSlot
+
+Appointment "1" -- "1" Doctor
+Appointment "1" -- "1" Patient
+Appointment "1" *-- "0..1" AppointmentOutcomeRecord
+AppointmentSlot "1" -- "0..1" Appointment
+
+AppointmentOutcomeRecord "1" *-- "*" Prescription
+Prescription "*" -- "1" Medicine
+Prescription "*" -- "0..1" Pharmacist
+
+Medicine "1" -- "*" MedicineInventoryAction
+Medicine "1" -- "*" ReplenishmentRequest
+ReplenishmentRequest "*" -- "1" Pharmacist
+ReplenishmentRequest "*" -- "0..1" Administrator
+MedicineInventoryAction "*" -- "1" Administrator
+
+' Controller dependencies
+AuthenticationController ..> StaffRepository
+AuthenticationController ..> PatientRepository
+
+
+DoctorAvailabilityController ..> DoctorAvailabilityRepository
+
+MedicalRecordController ..> MedicalRecordRepository
+MedicalRecordController ..> PatientRepository
+
+PatientController ..> PatientRepository
+PatientController ..> AppointmentController
+
+SessionController ..> StaffRepository
+SessionController ..> PatientRepository
+SessionController ..> AppointmentRepository
+SessionController ..> MedicineRepository
+
+' UI dependencies
+LoginUI ..> AuthenticationController
+
+PatientUI ..> AuthenticationController
+PatientUI ..> AppointmentController
+PatientUI ..> MedicalRecordController
+PatientUI ..> PatientController
+
+DoctorUI ..> AuthenticationController
+DoctorUI ..> AppointmentController
+DoctorUI ..> MedicalRecordController
+DoctorUI ..> DoctorAvailabilityController
+
+PharmacistUI ..> AuthenticationController
+PharmacistUI ..> AppointmentController
+PharmacistUI ..> MedicineRepository
+
+AdministratorUI ..> AuthenticationController
+AdministratorUI ..> AppointmentController
+AdministratorUI ..> MedicineRepository
+
+' System dependencies
+HospitalManagementSystem *-- LoginUI
+
+@enduml
